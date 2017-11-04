@@ -32,9 +32,10 @@ if aws:
 all_samples=[]
 
 for line in samples:
-    steering = float(line[3])
 
-    for camera in range(1):
+
+    for camera in range(3):
+        steering = float(line[3])
         image_file = line[camera].split('/')[-1]
         image_path = 'data/IMG/' + image_file
         correction = 0 if camera == 0 else (0.2 if camera == 1 else -0.2)
@@ -45,8 +46,7 @@ for line in samples:
 print(np.shape(all_samples))
 train_samples, validation_samples = train_test_split(all_samples, test_size=0.2)
 
-def distort_image(image):
-    return image
+
 
 def rgb_clahe(img):
     #https://stackoverflow.com/questions/24341114/simple-illumination-correction-in-images-opencv-c/24341809#24341809
@@ -56,6 +56,63 @@ def rgb_clahe(img):
     return cv2.merge((cl, a, b))
 
 
+def warp_image(image, angle):
+    shape = np.shape(image)
+    zoomx = np.random.uniform(0.8, 1.2)
+    # zoomxy=np.random.uniform(-0.2,0.2)
+    zoomy = np.random.uniform(0.8, 1.2)  # zoomx-zoomxy
+    zoomxy = zoomx - zoomy
+    extrapixelsx = (shape[0] - shape[0] * zoomx) / 2
+    extrapixelsy = (shape[1] - shape[1] * zoomy) / 2
+    movex = np.random.uniform(-30, 30)
+    movey = np.random.uniform(-15, 15)
+    posx = extrapixelsx + movex / (zoomx * 2)
+    posy = extrapixelsy + movey / (zoomy * 2)
+    skewx = np.random.uniform(-0.1, 0.1)
+    skewy = np.random.uniform(-0.05, 0.05)  ##take it easy with this!
+    # print(f"zoomx {zoomx},zoomy {zoomy},movex {movex}, movey {movey}, skewx {skewx}, skewy {skewy}")
+    M = np.float32([[zoomx, skewx, posx], [skewy, zoomy, posy]])
+    image = cv2.warpAffine(image, M, (shape[1], shape[0]), borderMode=cv2.BORDER_REPLICATE)
+    angle += (skewx * 0.5) + (skewy * 0.5) + movex / 100 + zoomxy * angle
+    return image, angle
+
+
+def change_colors_image(image):
+    image = image.astype(np.int32)
+    sigma = 0  # 30 ##difference between channels
+    mu = np.random.randint(-100, 100)  # brightness
+    rnds = np.round(np.random.normal(mu, sigma, 3)).astype(int)
+    for i, r in enumerate(rnds):
+        if np.random.rand() < 0.1:
+            image[:, :, i] = 255 - image[:, :, i]
+
+        image[:, :, i] = np.clip(image[:, :, i] + r, 0, 255)
+
+    return image.astype(np.uint8)
+
+
+def dropout_image(image):
+    shape = np.shape(image)
+    # https://github.com/aleju/imgaug
+    # Randomly remove parts of the image
+    # Similar to dropout in the network, if the network can learn
+    # on more limited parts, it should work better!
+    for i in range(3):
+        for j in range(10):
+            center = (np.random.randint(0, shape[0]), np.random.randint(0, shape[1]))
+            size = (np.random.randint(0, shape[0] / 3), np.random.randint(0, shape[1] / 3))
+
+            pt1 = (np.clip(center[0] - size[0], 0, shape[0]), np.clip(center[1] - size[1], 0, shape[1]))
+            pt2 = (np.clip(center[0] + size[0], 0, shape[0]), np.clip(center[1] + size[1], 0, shape[1]))
+            image[pt1[0]:pt2[0], pt1[1]:pt2[1], i] = 0
+
+    return image
+
+def augument_image(image, angle):
+    image, angle = warp_image(image, angle)
+    image = change_colors_image(image)
+    # image=dropout_image(image)
+    return image, angle
 
 from keras.models import Sequential
 from keras.layers import Flatten, Dense, Lambda, Dropout
@@ -73,33 +130,18 @@ def generator(samples, batch_size=32):
             angles = []
             for batch_sample in batch_samples:
                 center_path = batch_sample[0]
-                image = cv2.cvtColor(cv2.imread(center_path), cv2.COLOR_BGR2LAB)#YUV)
+                image = cv2.imread(center_path)
+                shape = np.shape(image)
+                image = cv2.resize(image[int(shape[0]*0.25):int(shape[0]*0.85),0:shape[1],:],(200,66))
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)#YUV)
                 image = rgb_clahe(image)
-                image = cv2.cvtColor(image, cv2.COLOR_LAB2BGR)  # YUV)
-                #cv2.imshow('image', image)
-                #print("2")
-                #cv2.waitKey(0)
+                image = cv2.cvtColor(image, cv2.COLOR_LAB2RGB)  # YUV)
                 steering = batch_sample[1]
                 if batch_sample[2]:  # flip image and steering, so we have 50/50 for both left and right
                     image = cv2.flip(image, 1)
 
-                #image = array_to_img(image)
-                #image=random_rotation(image,20)
-                #print("3")
-                #cv2.waitKey(0)
-                #image=random_shift(image,.1,.1)
-                #cv2.imshow('image', image)
-                #print("4")
-                #cv2.waitKey(0)
-                #image=random_shear(image,.1)
-                #cv2.imshow('image', image)
-                #print("5")
-                #cv2.waitKey(0)
-                ##image=random_zoom(image,(1,1))
-                #cv2.imshow('image', image)
-                #print("6")
-                #cv2.waitKey(0)
-                #image = img_to_array(image)
+                image, steering = augument_image(image, steering)
+
                 images.append(image)
                 angles.append(steering)
             X_train = np.array(images)
@@ -118,8 +160,8 @@ validation_generator = generator(validation_samples)
 
 
 model = Sequential()
-model.add(Cropping2D(cropping=((70, 25), (0, 0)), input_shape=(160, 320, 3)))
-model.add(Lambda(lambda x: x / 127.5 - 1.))  # , input_shape=(160,320,3)))
+#model.add(Cropping2D(cropping=((70, 25), (0, 0)), input_shape=(160, 320, 3)))
+model.add(Lambda(lambda x: x / 127.5 - 1. , input_shape=(66,200,3)))
 model.add(Conv2D(24, (5, 5), activation="relu", strides=(2, 2)))
 model.add(MaxPooling2D(pool_size=(2,2)))
 model.add(Dropout(0.8, noise_shape=None, seed=None))

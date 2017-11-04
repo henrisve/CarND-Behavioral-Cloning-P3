@@ -49,6 +49,13 @@ controller = SimplePIController(0.1, 0.002)
 set_speed = 10
 controller.set_desired(set_speed)
 
+def rgb_clahe(img):
+    #https://stackoverflow.com/questions/24341114/simple-illumination-correction-in-images-opencv-c/24341809#24341809
+    l, a, b = cv2.split(img)
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    cl = clahe.apply(l)
+    return cv2.merge((cl, a, b))
+
 
 @sio.on('telemetry')
 def telemetry(sid, data):
@@ -63,7 +70,12 @@ def telemetry(sid, data):
         imgString = data["image"]
         image = Image.open(BytesIO(base64.b64decode(imgString)))
         image_array = np.asarray(image)
-        image_array = cv2.cvtColor(image_array, cv2.COLOR_RGB2YUV)
+        #image_array = cv2.cvtColor(image_array, cv2.COLOR_RGB2YUV)
+        image_array = cv2.resize(image_array[int(shape[0] * 0.25):int(shape[0] * 0.85), 0:shape[1], :], (200, 66))
+        image_array = cv2.cvtColor(image_array, cv2.COLOR_RGB2LAB)  # YUV)
+        image_array = rgb_clahe(image_array)
+        image_array = cv2.cvtColor(image_array, cv2.COLOR_LAB2RGB)  # YUV)
+
         #resize image?
         steering_angle = float(model.predict(image_array[None, :, :, :], batch_size=1))
 
