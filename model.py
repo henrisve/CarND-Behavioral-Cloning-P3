@@ -32,16 +32,17 @@ if aws:
 all_samples=[]
 
 for line in samples:
-
-
     for camera in range(3):
         steering = float(line[3])
-        image_file = line[camera].split('/')[-1]
-        image_path = 'data/IMG/' + image_file
-        correction = 0 if camera == 0 else (0.2 if camera == 1 else -0.2)
-        steering += correction
-        all_samples.append([image_path,steering,False])
-        all_samples.append([image_path,-steering,True])
+        if True:#steering != 0 or np.random.rand() <0.3:
+            image_file = line[camera].split('/')[-1]
+            image_path = 'data/IMG/' + image_file
+            correction = 0 if camera == 0 else (0.2 if camera == 1 else -0.2)
+            #steering += correction
+
+            for i in range(1 + int((abs(steering)*3.)**1.2)):
+                all_samples.append([image_path, steering+correction,False])
+                all_samples.append([image_path, -(steering+correction),True])
 
 print(np.shape(all_samples))
 train_samples, validation_samples = train_test_split(all_samples, test_size=0.2)
@@ -98,7 +99,7 @@ def dropout_image(image):
     # Similar to dropout in the network, if the network can learn
     # on more limited parts, it should work better!
     for i in range(3):
-        for j in range( np.random.randint(2, 15)):
+        for j in range( np.random.randint(1, 15)):
             center = (np.random.randint(0, shape[0]), np.random.randint(0, shape[1]))
             size = (np.random.randint(0, shape[0] / 3), np.random.randint(0, shape[1] / 3))
 
@@ -122,7 +123,7 @@ from keras.layers import Flatten, Dense, Lambda, Dropout
 from keras.layers import Conv2D, MaxPooling2D, Cropping2D
 from keras.preprocessing.image import *
 
-def generator(samples, batch_size=32):
+def generator(samples, train=True,batch_size=32):
     num_samples = len(samples)
     while 1:  # Loop forever so the generator never terminates
         samples = sklearn.utils.shuffle(samples)
@@ -134,16 +135,13 @@ def generator(samples, batch_size=32):
             for batch_sample in batch_samples:
                 center_path = batch_sample[0]
                 image = cv2.imread(center_path)
-                shape = np.shape(image)
-                #image = cv2.resize(image[int(shape[0]*0.25):int(shape[0]*0.85),0:shape[1],:],(200,66))
-                #image = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)#YUV)
-                #image = rgb_clahe(image)
-                #image = cv2.cvtColor(image, cv2.COLOR_LAB2RGB)  # YUV)
+
                 steering = batch_sample[1]
                 if batch_sample[2]:  # flip image and steering, so we have 50/50 for both left and right
                     image = cv2.flip(image, 1)
 
-                image, steering = augument_image(image, steering)
+                if train:
+                    image, steering = augument_image(image, steering)
 
                 images.append(image)
                 angles.append(steering)
@@ -153,8 +151,8 @@ def generator(samples, batch_size=32):
 
 
 # compile and train the model using the generator function
-train_generator = generator(train_samples)
-validation_generator = generator(validation_samples)
+train_generator = generator(train_samples,train=True)
+validation_generator = generator(validation_samples,train=False)
 
 # the training part, maybe split into two files?
 
@@ -165,21 +163,17 @@ validation_generator = generator(validation_samples)
 model = Sequential()
 #model.add(Cropping2D(cropping=((70, 25), (0, 0)), input_shape=(160, 320, 3)))
 model.add(Lambda(lambda x: x / 127.5 - 1. , input_shape=(66,200,3)))
-model.add(Conv2D(34, (5, 5), activation="relu", strides=(2, 2)))
+model.add(Conv2D(24, (5, 5), activation="relu", strides=(2, 2)))
 model.add(MaxPooling2D(pool_size=(2,2)))
-model.add(Dropout(0.8, noise_shape=None, seed=None))
-model.add(Conv2D(56, (5, 5), activation="relu"))
+#model.add(Dropout(0.5, noise_shape=None, seed=None))
+model.add(Conv2D(36, (5, 5), activation="relu"))
 #model.add(MaxPooling2D())
-model.add(Conv2D(78, (3, 3), activation="relu", strides=(2, 2)))
+model.add(Conv2D(48, (3, 3), activation="relu", strides=(2, 2)))
 #model.add(MaxPooling2D())
-model.add(Conv2D(84, (3, 3), activation="relu"))
-model.add(Conv2D(104, (3, 3), activation="relu"))
+model.add(Conv2D(64, (3, 3), activation="relu"))
+model.add(Conv2D(64, (3, 3), activation="relu"))
 #model.add(MaxPooling2D())
 model.add(Flatten())
-model.add(Dense(1000))
-model.add(Dropout(0.5, noise_shape=None, seed=None))
-model.add(Dense(500))
-model.add(Dropout(0.5, noise_shape=None, seed=None))
 model.add(Dense(100))
 model.add(Dropout(0.5, noise_shape=None, seed=None))
 model.add(Dense(50))
@@ -193,23 +187,23 @@ model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, v
                     validation_steps=len(validation_samples)//32, nb_epoch=2)
 model.save('model1.h5')
 model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
-                    validation_steps=len(validation_samples)//32, nb_epoch=1)
+                    validation_steps=len(validation_samples)//32, nb_epoch=2)
 model.save('model2.h5')
-model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
-                    validation_steps=len(validation_samples)//32, nb_epoch=1)
-model.save('model3.h5')
-model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
-                    validation_steps=len(validation_samples)//32, nb_epoch=1)
-model.save('model4.h5')
-model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
-                    validation_steps=len(validation_samples)//32, nb_epoch=1)
-model.save('model5.h5')
-model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
-                    validation_steps=len(validation_samples)//32, nb_epoch=1)
-model.save('model6.h5')
-model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
-                    validation_steps=len(validation_samples)//32, nb_epoch=1)
-model.save('model7.h5')
+#model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
+#                    validation_steps=len(validation_samples)//32, nb_epoch=2)
+#model.save('model3.h5')
+#model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
+#                    validation_steps=len(validation_samples)//32, nb_epoch=2)
+##model.save('model4.h5')
+#model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
+#                    validation_steps=len(validation_samples)//32, nb_epoch=2)
+#model.save('model5.h5')
+#model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
+#                    validation_steps=len(validation_samples)//32, nb_epoch=2)
+#model.save('model6.h5')
+#model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
+#                    validation_steps=len(validation_samples)//32, nb_epoch=2)
+#model.save('model7.h5')
 #model.fit_generator(train_generator, samples_per_epoch=len(train_samples), validation_data=validation_generator,
 #                    nb_val_samples=len(validation_samples), nb_epoch=3)
 
