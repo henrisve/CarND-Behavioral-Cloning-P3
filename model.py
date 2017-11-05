@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 print("2")
 
 #use pandas instead?
-aws=False
+aws=True
 with open('data/driving_log.csv', 'r') as file:
     samples = [line for line in csv.reader(file, delimiter=',')][1:]
 if aws:
@@ -26,7 +26,7 @@ if aws:
 
     with open('data/driving_log_right.csv', 'r') as file:
         samples6 = [line for line in csv.reader(file, delimiter=',')][1:]
-    samples=np.concatenate([samples,samples2,samples3,samples4,samples5,samples6])
+    samples=np.concatenate([samples,samples2,samples3,samples5,samples6])
 
 
 all_samples=[]
@@ -98,7 +98,7 @@ def dropout_image(image):
     # Similar to dropout in the network, if the network can learn
     # on more limited parts, it should work better!
     for i in range(3):
-        for j in range(10):
+        for j in range( np.random.randint(2, 15)):
             center = (np.random.randint(0, shape[0]), np.random.randint(0, shape[1]))
             size = (np.random.randint(0, shape[0] / 3), np.random.randint(0, shape[1] / 3))
 
@@ -109,9 +109,12 @@ def dropout_image(image):
     return image
 
 def augument_image(image, angle):
-    image, angle = warp_image(image, angle)
-    image = change_colors_image(image)
-    # image=dropout_image(image)
+    if np.random.rand() < 0.5:
+        image, angle = warp_image(image, angle)
+    if np.random.rand() < 0.5:
+        image = change_colors_image(image)
+    if np.random.rand() < 0.5:
+        image=dropout_image(image)
     return image, angle
 
 from keras.models import Sequential
@@ -132,10 +135,10 @@ def generator(samples, batch_size=32):
                 center_path = batch_sample[0]
                 image = cv2.imread(center_path)
                 shape = np.shape(image)
-                image = cv2.resize(image[int(shape[0]*0.25):int(shape[0]*0.85),0:shape[1],:],(200,66))
-                image = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)#YUV)
-                image = rgb_clahe(image)
-                image = cv2.cvtColor(image, cv2.COLOR_LAB2RGB)  # YUV)
+                #image = cv2.resize(image[int(shape[0]*0.25):int(shape[0]*0.85),0:shape[1],:],(200,66))
+                #image = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)#YUV)
+                #image = rgb_clahe(image)
+                #image = cv2.cvtColor(image, cv2.COLOR_LAB2RGB)  # YUV)
                 steering = batch_sample[1]
                 if batch_sample[2]:  # flip image and steering, so we have 50/50 for both left and right
                     image = cv2.flip(image, 1)
@@ -162,17 +165,21 @@ validation_generator = generator(validation_samples)
 model = Sequential()
 #model.add(Cropping2D(cropping=((70, 25), (0, 0)), input_shape=(160, 320, 3)))
 model.add(Lambda(lambda x: x / 127.5 - 1. , input_shape=(66,200,3)))
-model.add(Conv2D(24, (5, 5), activation="relu", strides=(2, 2)))
+model.add(Conv2D(34, (5, 5), activation="relu", strides=(2, 2)))
 model.add(MaxPooling2D(pool_size=(2,2)))
 model.add(Dropout(0.8, noise_shape=None, seed=None))
-model.add(Conv2D(36, (5, 5), activation="relu"))
+model.add(Conv2D(56, (5, 5), activation="relu"))
 #model.add(MaxPooling2D())
-model.add(Conv2D(48, (3, 3), activation="relu", strides=(2, 2)))
+model.add(Conv2D(78, (3, 3), activation="relu", strides=(2, 2)))
 #model.add(MaxPooling2D())
-model.add(Conv2D(64, (3, 3), activation="relu"))
-model.add(Conv2D(64, (3, 3), activation="relu"))
+model.add(Conv2D(84, (3, 3), activation="relu"))
+model.add(Conv2D(104, (3, 3), activation="relu"))
 #model.add(MaxPooling2D())
 model.add(Flatten())
+model.add(Dense(1000))
+model.add(Dropout(0.5, noise_shape=None, seed=None))
+model.add(Dense(500))
+model.add(Dropout(0.5, noise_shape=None, seed=None))
 model.add(Dense(100))
 model.add(Dropout(0.5, noise_shape=None, seed=None))
 model.add(Dense(50))
@@ -183,9 +190,27 @@ model.add(Dense(1))
 
 model.compile(loss='mse', optimizer='adam')
 model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
-                    validation_steps=len(validation_samples)//32, nb_epoch=5)
-
+                    validation_steps=len(validation_samples)//32, nb_epoch=2)
+model.save('model1.h5')
+model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
+                    validation_steps=len(validation_samples)//32, nb_epoch=1)
+model.save('model2.h5')
+model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
+                    validation_steps=len(validation_samples)//32, nb_epoch=1)
+model.save('model3.h5')
+model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
+                    validation_steps=len(validation_samples)//32, nb_epoch=1)
+model.save('model4.h5')
+model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
+                    validation_steps=len(validation_samples)//32, nb_epoch=1)
+model.save('model5.h5')
+model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
+                    validation_steps=len(validation_samples)//32, nb_epoch=1)
+model.save('model6.h5')
+model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
+                    validation_steps=len(validation_samples)//32, nb_epoch=1)
+model.save('model7.h5')
 #model.fit_generator(train_generator, samples_per_epoch=len(train_samples), validation_data=validation_generator,
 #                    nb_val_samples=len(validation_samples), nb_epoch=3)
 
-model.save('model.h5')
+

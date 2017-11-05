@@ -46,7 +46,7 @@ class SimplePIController:
 
 
 controller = SimplePIController(0.1, 0.002)
-set_speed = 10
+set_speed = 8
 controller.set_desired(set_speed)
 
 def rgb_clahe(img):
@@ -71,6 +71,7 @@ def telemetry(sid, data):
         image = Image.open(BytesIO(base64.b64decode(imgString)))
         image_array = np.asarray(image)
         #image_array = cv2.cvtColor(image_array, cv2.COLOR_RGB2YUV)
+        shape=np.shape(image_array)
         image_array = cv2.resize(image_array[int(shape[0] * 0.25):int(shape[0] * 0.85), 0:shape[1], :], (200, 66))
         image_array = cv2.cvtColor(image_array, cv2.COLOR_RGB2LAB)  # YUV)
         image_array = rgb_clahe(image_array)
