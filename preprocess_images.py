@@ -34,6 +34,7 @@ for line in samples:
         image_file = line[camera].split('/')[-1]
         image_path = 'data/IMG/' + image_file
         image=cv2.imread(image_path)
+        #  Save backup (create this folder before running this!)
         cv2.imwrite('data/IMGold/' + image_file, image)
         shape=np.shape(image)
         image = cv2.resize(image[int(shape[0] * 0.25):int(shape[0] * 0.85), 0:shape[1], :], (200, 66))

@@ -39,7 +39,7 @@ for line in samples:
             correction = 0 if camera == 0 else (0.2 if camera == 1 else -0.2)
             #  steering += correction
 
-            for i in range(1 + int((abs(steering)*3.)**1.2)):
+            for i in range(1):# + int((abs(steering)*3.)**1.2)):
                 all_samples.append([image_path, steering+correction,False])
                 all_samples.append([image_path, -(steering+correction),True])
 
@@ -87,7 +87,7 @@ def warp_image(image, angle):
 '''
 def change_colors_image(image):
     image = image.astype(np.int32)  #to not allow values to go from 255 to 0.
-    sigma = 10  # 30 ##difference between channels
+    sigma = 20  # 30 ##difference between channels
     mu = np.random.randint(-100, 100)  # brightness
     rnds = np.round(np.random.normal(mu, sigma, 3)).astype(int)
     for i, r in enumerate(rnds):
@@ -183,15 +183,15 @@ validation_generator = generator(validation_samples,train=False)
 ''' Model starts here'''
 model = Sequential()
 model.add(Lambda(lambda x: x / 127.5 - 1. , input_shape=(66,200,3)))
-model.add(Conv2D(24, (5, 5), activation="relu", strides=(2, 2)))
-model.add(MaxPooling2D(pool_size=(2,2)))
+model.add(Conv2D(24, (5, 5), activation="elu", strides=(2, 2)))
+#model.add(MaxPooling2D(pool_size=(2,2)))
 #model.add(Dropout(0.5, noise_shape=None, seed=None))
-model.add(Conv2D(36, (5, 5), activation="relu"))
+model.add(Conv2D(36, (5, 5), activation="elu"))
 #model.add(MaxPooling2D())
-model.add(Conv2D(48, (3, 3), activation="relu", strides=(2, 2)))
+model.add(Conv2D(48, (5, 5), activation="elu", strides=(2, 2)))
 #model.add(MaxPooling2D())
-model.add(Conv2D(64, (3, 3), activation="relu"))
-model.add(Conv2D(64, (3, 3), activation="relu"))
+model.add(Conv2D(64, (3, 3), activation="elu"))
+model.add(Conv2D(64, (3, 3), activation="elu"))
 #model.add(MaxPooling2D())
 model.add(Flatten())
 model.add(Dense(100))
@@ -204,15 +204,27 @@ model.add(Dense(1))
 
 model.compile(loss='mse', optimizer='adam')
 model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
-                    validation_steps=len(validation_samples)//32, nb_epoch=3)
+                    validation_steps=len(validation_samples)//32, nb_epoch=2)
 model.save('model1.h5')
-model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
-                    validation_steps=len(validation_samples)//32, nb_epoch=3)
-model.save('model2.h5')
-model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
-                    validation_steps=len(validation_samples)//32, nb_epoch=3)
-model.save('model2.h5')
+#model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
+#                    validation_steps=len(validation_samples)//32, nb_epoch=1)
+#model.save('model2.h5')
+#model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
+#                    validation_steps=len(validation_samples)//32, nb_epoch=1)
+#model.save('model3.h5')
+#model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
+#                    validation_steps=len(validation_samples)//32, nb_epoch=1)
+#model.save('model4.h5')
+#model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
+#                    validation_steps=len(validation_samples)//32, nb_epoch=1)
+#model.save('model5.h5')
+#model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
+#                    validation_steps=len(validation_samples)//32, nb_epoch=1)
+##model.save('model6.h5')
+#model.fit_generator(train_generator, steps_per_epoch = len(train_samples)//32, validation_data=validation_generator,
+#                    validation_steps=len(validation_samples)//32, nb_epoch=1)
+##model.save('model7.h5')
 #This could be in a for loop, but just here temporarly so I can compare the epochs i the simulator.
 
 
-
+#
