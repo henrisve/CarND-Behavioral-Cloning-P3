@@ -25,11 +25,13 @@ My project includes the following files:
 | drive.py    	| Python file to run the file with simulator		|
 | preprocess_images.py	| Python file to pre-process all images		|
 | analyse_dataset.ipynb 		| Notebook where i Analysed and verified methods |
-| model.h5		| main model (works best on track 1					|
-| model2.h5		| main model (works best on track 2					|
+| model.h5		| main model (works ok on both track (run1.mp4 and (run2.mp4)	)						|
+| model1.h5		| model (works best on track 1 					|
+| model2.h5		| model (works best on track 2 (unseen) (run4.mp4)				|
 | readme.md    | This file! 				|
 | run1.mp4    | Track1 video				|
 | run2.mp4   | Track2 video			|
+| run4.mp4   | Track2 video	(unseen)		|
 
 
 ####2. Submission includes functional code
@@ -45,8 +47,9 @@ python drive.py model.h5
 
 My model consists of a convolution neural network that I based on the Nvidia network but added dropout in the fully connected layers (model.py lines 183-203) 
 
-The model includes ELU layers to introduce nonlinearity , and the data is normalized in the model using a Keras lambda layer as shown in the lecture. 
-(I first used relu, change to ELU (which is similar but don't have the Vanishing gradient problem) after people talking about it in the slack channel, didn't really notice any difference, except that I get a feeling it's a bit slower at training)
+The model includes RELU layers to introduce nonlinearity , and the data is normalized in the model using a Keras lambda layer as shown in the lecture. 
+(I first used relu, tried to change to ELU (which is similar but don't have the Vanishing gradient problem) after people talking about it in the slack channel, 
+didn't really notice any difference, so ended up with relu in the final model)
 
 ####2. Attempts to reduce overfitting in the model
 
@@ -86,7 +89,6 @@ For details about how I created the training data, see the next section.
 
 ####1. Solution Design Approach
 
-The overall strategy for deriving a model architecture was to ...
 
 My first step was to use a convolution neural network model similar to the one by NVIDIA, I thought this model might be appropriate because they used it for a car, and it looks to be complex enough but still simple to be able to run in real time.
 
@@ -102,20 +104,42 @@ At the end of the process, the vehicle is able to drive autonomously around the 
 
 ####2. Final Model Architecture
 
-The final model architecture is the same as NVIDIA model but with dropout, (Todo, add the image here)
+The final model architecture is similar to NVIDIA model, but a few changes:
+
+|          Layers           |
+|:-----------------------------------------------:| 
+| Image normalization
+| Convolution 5x5, 24 filters, 2x2 strides , RELU activation
+| MaxPooling  2x2
+| Dropout 0.5
+| Convolution 5x5, 36 filters, RELU activation
+| Convolution 3x3, 48 filters, 2x2 strides , RELU activation
+| Convolution 3x3, 64 filters, RELU activation 
+| Convolution 3x3, 64 filters, RELU activation
+| Fully connected 100 
+| Dropout 0.5
+| Fully connected 50 
+| Dropout 0.5
+| Fully connected 10 
+| Dropout 0.5
+| Fully connected 1 
 
 ####3. Creation of the Training Set & Training Process
 
-To capture good driving behavior, I first used the data given by udacity, then I went in the opposite direction to get a "new" track. After this I went to the second track and went only in the opposite direction, i did this 3 times, one with "shortest" where i drove straight in S-curves etc, and then one for each lane. 
+To capture good driving behavior, I first used the data given by udacity, then I went in the opposite direction to get a 
+"new" track. After this I went to the second track and went only in the opposite direction, i did this 3 times, one with
+ "shortest" where i drove straight in S-curves etc, and then one for each lane. 
 
-I never did a few random "recovery" just so it maybe can handle a few situation where it gets a bit off. I never "fine tuned" the run by doing extra data in hard situation, as I see that as a bit of cheating, as we should be as general as possible.
+I never did a few random "recovery" just so it maybe can handle a few situation where it gets a bit off. I never "fine tuned" 
+the run by doing extra data in hard situation, as I see that as a bit of cheating, as we should be as general as possible.
 
 Here I had 26029 data points and the histogram of this looks like following:
 
 <img src="images/histogramOneCamera.png">
 
 We can see that it's heavily biased towards 0, which is not the best.
-one way to get more data with angles was to use all 3 cameras as in the lecture, where I added +- 0.2 for the angles to make it as "recover" data. I also flipped all the images, so I thereby got the double amount of data and to not over fit for one direction. This gave us 156174 data points
+one way to get more data with angles was to use all 3 cameras as in the lecture, where I added +- 0.2 for the angles to make 
+it as "recover" data. I also flipped all the images, so I thereby got the double amount of data and to not over fit for one direction. This gave us 156174 data points
 
 After this the histogram looked like this:
 
@@ -129,15 +153,27 @@ The histogram now looks like this! Really nice!!
 
 <img src="images/histogramAfter.png">
 
-But wait! Now the car start to go all over the road and almost always turn!! so Maybe it's a bad idea to cut of data, as the data actually do represent how the car should go, which is mostly with no turning, and also if we remove some areas where we go straight the car won't understand that and will thus turn, so lets add that back but also add more on the sides, now we have 256850 data points and the following histogram:
+But wait! Now the car start to go all over the road and almost always turn!! so Maybe it's a bad idea to cut of data, as
+ the data actually do represent how the car should go, which is mostly with no turning, and also if we remove some areas 
+ where we go straight the car won't understand that and will thus turn, so lets add that back but also add more on the sides,
+ 
+  now we have 256850 data points and the following histogram:
 
 <img src="images/histogramAfterNoRemove.png">
 
 I finally randomly shuffled the data set and put 20% of the data into a validation set. 
 
-I used this training data for training the model. The validation set helped determine if the model was over or under fitting, but wasn't perfect as it was very similar to the training data, and a model with very good validation score could performe worse on the real track, this showed that we overfitted to the validation data!
-One good idea to solve this would be to build a new simulator, that ran the same thing in high speed with out showing it, and give us a validation a score based on how well it performed.
+I used this training data for training the model. The validation set helped determine if the model was over or under fitting, 
+but wasn't perfect as it was very similar to the training data, and a model with very good validation score could perform 
+worse on the real track, this showed that we also overfitted to the validation data!
+One good idea to solve this would be to build a new simulator, that ran the same thing in high speed without showing it, 
+and give us a validation score based on how well it performed.
 
 I didn't find any "optimal" amount of epochs as it seemed to be different each time, but I ended up running 5 times.
 
-Moreover, to be able to train faster, I did some pre-processing, such as resize, crop and apply CLAHE before and saved these images instead. This is in the file Preprocess_images.py. It was also supposed to make a backup of all the old images, but apparently one need to create a folder before running the script!
+Moreover, to be able to train faster, I did some pre-processing, such as resize, crop and apply CLAHE before and used these 
+images instead. This is in the file Preprocess_images.py.
+
+In the end I did do training data for track 2 aswell, which is model.h5. (the histogram and number of datapoints was
+made for model1.h5, so model.h5 was trained on much more than that, but should be similar). However, it didn't go all the 
+way and crashed after a while.
