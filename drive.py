@@ -21,6 +21,9 @@ sio = socketio.Server()
 app = Flask(__name__)
 model = None
 
+
+
+
 prev_image_array = None
 
 
@@ -45,8 +48,8 @@ class SimplePIController:
         return self.Kp * self.error + self.Ki * self.integral
 
 
-controller = SimplePIController(0.5, 0.002)
-set_speed = 15
+controller = SimplePIController(0.15, 0.002)
+set_speed = 20
 controller.set_desired(set_speed)
 
 def rgb_clahe(img):
@@ -70,15 +73,20 @@ def telemetry(sid, data):
         imgString = data["image"]
         image = Image.open(BytesIO(base64.b64decode(imgString)))
         image_array = np.asarray(image)
+        #cv2.imwrite('tempdriveimage/image1.jpg', image_array)
         #image_array = cv2.cvtColor(image_array, cv2.COLOR_RGB2YUV)
         shape=np.shape(image_array)
         image_array = cv2.resize(image_array[int(shape[0] * 0.25):int(shape[0] * 0.85), 0:shape[1], :], (200, 66))
         image_array = cv2.cvtColor(image_array, cv2.COLOR_RGB2LAB)  # YUV)
         image_array = rgb_clahe(image_array)
         image_array = cv2.cvtColor(image_array, cv2.COLOR_LAB2BGR)  # YUV)
-
-
+        #image_array = cv2.cvtColor(image_array, cv2.COLOR_RGB2YUV)
         steering_angle = float(model.predict(image_array[None, :, :, :], batch_size=1))
+
+        #steername = int(steering_angle * 100)
+        #cv2.imwrite('tempdriveimage/image'  + str(steername) + '.jpg', image_array)
+
+
 
         throttle = controller.update(float(speed))
 
