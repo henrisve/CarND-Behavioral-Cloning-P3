@@ -63,14 +63,16 @@ Also doing some warping that includes zoom, move and skew. while doing this I al
 <img src="images/skewAngle1.png" >
 <img src="images/skewAngle2.png" >
 
-I also tried a method of use dropout in the images, I did that by randomly choosing a few rectangles for each channel that I put to 0, the idea with this is that even if for example half the image in gone, it should still know how to turn, or if one of the channels is lost in important areas. Here's two examples, the first one alot of data is lost, and the second not as much, ofcourse there's also cases where there's no dropouts
+I also tried a method of use dropout in the images, I did that by randomly drawing a few rectangles for each channel 
+that I put to 0, the idea with this is that even if for example half the image in gone, it should still know how to 
+turn, or if one of the channels is lost in important areas. Here's two examples, the first one a lot of data is lost, 
+and the second just a bit, the first one is on the extreme side, and of course there's also cases where there's no dropouts
 
 <img src="images/dropout11.png" >
 <img src="images/dropout12.png" >
 
 <img src="images/dropout21.png">
 <img src="images/dropout22.png" >
-
 
 
 
