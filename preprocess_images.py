@@ -8,7 +8,6 @@ with open('new/driving_log_t1side.csv', 'r') as file:
 with open('new/driving_log_t2correct.csv', 'r') as file:
     samples2 = [line for line in csv.reader(file, delimiter=',')][1:]
 samples=np.concatenate([samples1,samples2])
-#if aws:
 #    with open('data/driving_log2.csv', 'r') as file:
 #        samples2 = [line for line in csv.reader(file, delimiter=',')][1:]#
 #
@@ -38,13 +37,13 @@ for line in samples:
         image_path = 'new/IMG/' + image_file
         image=cv2.imread(image_path)
         #  Save backup (create this folder before running this!)
-        cv2.imwrite('new/IMGold/' + image_file, image)
+        #cv2.imwrite('new/IMGold/' + image_file, image)
         shape=np.shape(image)
         image = cv2.resize(image[int(shape[0] * 0.25):int(shape[0] * 0.85), 0:shape[1], :], (200, 66))
         image = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)#YUV)
         image = rgb_clahe(image)
         image = cv2.cvtColor(image, cv2.COLOR_LAB2BGR)  # YUV)
-        cv2.imwrite('new/IMG/' + image_file, image)
+        cv2.imwrite('new/IMGcl/' + image_file, image)
 
 
 
